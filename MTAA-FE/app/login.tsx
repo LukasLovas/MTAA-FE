@@ -1,17 +1,21 @@
 import React, { useState } from "react";
 import { View, TextInput, Button, Alert } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
+import { Redirect } from "expo-router";
+
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [redirect, setRedirect] = useState(false);
 
   const handleLogin = async () => {
     try {
       setSubmitting(true);
       await signIn(username.trim(), password);
+      setRedirect(true);
     } catch (err: any) {
       console.error("Login error:", err);
       Alert.alert("Login failed", err?.response?.data?.message ?? err?.message ?? "Unknown error");
@@ -19,6 +23,8 @@ export default function LoginScreen() {
       setSubmitting(false);
     }
   };
+
+  if (redirect) return <Redirect href="/(tabs)/DashboardScreen" />;
 
   return (
     <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
