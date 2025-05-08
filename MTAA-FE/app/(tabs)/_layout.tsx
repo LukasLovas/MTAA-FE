@@ -1,6 +1,7 @@
+import { TouchableOpacity } from "react-native";
 import { Tabs, Redirect } from "expo-router";
 
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons, EvilIcons } from "@expo/vector-icons";
 
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,6 +10,10 @@ const TabsLayout = () => {
 
     if (!token) return <Redirect href="/login" />;
 
+    const handleAccountPress = () => {
+        // Handle account press action here
+    };
+
     return (
         <Tabs
             initialRouteName="DashboardScreen"
@@ -16,7 +21,6 @@ const TabsLayout = () => {
             <Tabs.Screen
                 name="DashboardScreen"
                 options={{
-                    headerTitle: "Dashboard",
                     tabBarShowLabel: false,
                     tabBarIcon: ({ color, size }) => (
                         <MaterialCommunityIcons name="view-dashboard" color={color} size={size} />

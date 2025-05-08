@@ -1,10 +1,25 @@
-import { View, Text, Button } from "react-native";
+import { Stack } from "expo-router";
+import { View, Text } from "react-native";
 
-export default function DashboardScreen() {
+import AppHeader from "../header/AppHeader";
+
+const DashboardScreen = () => {
+    
 
     return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <Text>Dashboard</Text>
-        </View>
+        <>
+            <Stack.Screen
+                options={{
+                    headerTitle: "Dashboard",
+                    headerRight: () => ( <AppHeader /> ),
+                    headerTitleAlign: "center",
+                }}
+            />
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                <Text>Dashboard</Text>
+            </View>
+        </>
     );
 }
+export default DashboardScreen;
+

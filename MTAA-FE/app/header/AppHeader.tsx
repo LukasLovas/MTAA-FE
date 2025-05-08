@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from "react-native";
-import { Ionicons, EvilIcons } from "@expo/vector-icons";
-import type { StackHeaderProps } from "@react-navigation/stack";
-import type { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
+import { router } from "expo-router";
+
+import { EvilIcons } from "@expo/vector-icons";
 
 import { useAuth } from "@/contexts/AuthContext";
 
-type Props = (StackHeaderProps | BottomTabHeaderProps) & {
-    title: string;  
-    backButton?: boolean; 
-};
-
-const AppHeader: React.FC<Props> = ({ navigation, backButton, title }) => {
+const AppHeader = () => {
     const { signOut } = useAuth();
     const [open, setOpen] = useState(false);
 
@@ -20,25 +15,13 @@ const AppHeader: React.FC<Props> = ({ navigation, backButton, title }) => {
     const close = () => { setOpen(false); }
 
     return (
-        <View style={styles.container}>
-            {(backButton && (
-                <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                style={styles.sideBtn}
-                >
-                <Ionicons name="chevron-back" size={24} />
-                </TouchableOpacity>
-            )) || <View style={styles.sideBtn} />}
-
-            <Text style={styles.title}>{title}</Text>
-
+        <>
             <TouchableOpacity
                 onPress={handleAccountPress}
-                style={styles.sideBtn}
+                style={ styles.sideBtn }
             >
-                <EvilIcons name="user" size={40} color="white" />
+                <EvilIcons name="user" size={40} color="black" />
             </TouchableOpacity>
-
             <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
                 <Pressable style={styles.backdrop} onPress={close}>
                     <View />
@@ -49,43 +32,43 @@ const AppHeader: React.FC<Props> = ({ navigation, backButton, title }) => {
                         label="My account" 
                         onPress={() => { 
                             close(); 
-                            // navigation.navigate("MyAccount"); 
+                            // router.push("/screens/account");
                         }} 
                     />
                     <MenuItem 
                         label="Settings"   
                         onPress={() => { 
                             close(); 
-                            navigation.navigate("Settings");   
+                            router.push("/(tabs)/SettingsScreen"); 
                         }} 
                     />
                     <MenuItem 
                         label="Help"       
                         onPress={() => { 
                             close(); 
-                            // navigation.navigate("Help");      
+                            // router.push("/screens/help");   
                         }} 
                     />
                     <MenuItem 
                         label="Sign out"   
                         onPress={() => { 
                             close(); 
-                            signOut();                        
+                            signOut();                      
                         }} 
                     />
                 </View>
             </Modal>
-        </View>
+        </>
     );
 };
+
+export default AppHeader;
 
 const MenuItem = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <TouchableOpacity onPress={onPress} style={styles.menuItem}>
         <Text style={styles.menuText}>{label}</Text>
     </TouchableOpacity>
-);  
-
-export default AppHeader;
+); 
 
 const styles = StyleSheet.create({
     container: {

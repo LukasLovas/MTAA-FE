@@ -1,10 +1,24 @@
-import { View, Text, Button } from "react-native";
+import { Stack } from "expo-router";
+import { View, Text } from "react-native";
 
-export default function BudgetsScreen() {
+import AppHeader from "../header/AppHeader";
+
+const BudgetsScreen = () => {
 
     return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <Text>Budgets</Text>
-        </View>
+        <>
+            <Stack.Screen
+                options={{
+                    headerTitle: "Budgets",
+                    headerRight: () => ( <AppHeader /> ),
+                    headerTitleAlign: "center",
+                }}
+            />
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                <Text>Budgets</Text>
+            </View>
+        </>
     );
 }
+
+export default BudgetsScreen;
