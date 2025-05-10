@@ -1,17 +1,16 @@
-import { useState } from "react";
+import React, { useState, useContext } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from "react-native";
 import { router } from "expo-router";
-
 import { EvilIcons } from "@expo/vector-icons";
-
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeContext } from "@/contexts/ThemeContext";
 
 const AppHeader = () => {
     const { signOut } = useAuth();
+    const { theme } = useContext(ThemeContext);
     const [open, setOpen] = useState(false);
 
     const handleAccountPress = () => { setOpen(true); }
-
     const close = () => { setOpen(false); }
 
     return (
@@ -20,20 +19,21 @@ const AppHeader = () => {
                 onPress={handleAccountPress}
                 style={ styles.sideBtn }
             >
-                <EvilIcons name="user" size={40} color="black" />
+                <EvilIcons name="user" size={40} color={theme.colors.text} />
             </TouchableOpacity>
             <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
                 <Pressable style={styles.backdrop} onPress={close}>
                     <View />
                 </Pressable>
 
-                <View style={styles.menu}>
+                <View style={[styles.menu, { backgroundColor: theme.colors.card }]}>                
                     <MenuItem 
                         label="My account" 
                         onPress={() => { 
                             close(); 
                             // router.push("/screens/account");
                         }} 
+                        theme={theme}
                     />
                     <MenuItem 
                         label="Settings"   
@@ -41,6 +41,7 @@ const AppHeader = () => {
                             close(); 
                             router.push("/(tabs)/SettingsScreen"); 
                         }} 
+                        theme={theme}
                     />
                     <MenuItem 
                         label="Help"       
@@ -48,6 +49,7 @@ const AppHeader = () => {
                             close(); 
                             // router.push("/screens/help");   
                         }} 
+                        theme={theme}
                     />
                     <MenuItem 
                         label="Sign out"   
@@ -55,6 +57,7 @@ const AppHeader = () => {
                             close(); 
                             signOut();                      
                         }} 
+                        theme={theme}
                     />
                 </View>
             </Modal>
@@ -62,28 +65,16 @@ const AppHeader = () => {
     );
 };
 
+const MenuItem = ({ label, onPress, theme }: { label: string; onPress: () => void; theme: any }) => (
+    <TouchableOpacity onPress={onPress} style={styles.menuItem}>
+        <Text style={[styles.menuText, { color: theme.colors.text }]}>{label}</Text>
+    </TouchableOpacity>
+);
+
 export default AppHeader;
 
-const MenuItem = ({ label, onPress }: { label: string; onPress: () => void }) => (
-    <TouchableOpacity onPress={onPress} style={styles.menuItem}>
-        <Text style={styles.menuText}>{label}</Text>
-    </TouchableOpacity>
-); 
-
 const styles = StyleSheet.create({
-    container: {
-        height: 56,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: "#2196F3",
-        paddingHorizontal: 4,
-        elevation: 0,
-        shadowColor: "transparent",
-    },
-    title: { fontWeight: "600", fontSize: 17, color: "#fff" },
     sideBtn: { width: 48, alignItems: "center" },
-
     backdrop: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.2)",
@@ -92,7 +83,6 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 56,          
         right: 8,
-        backgroundColor: "#fff",
         borderRadius: 8,
         minWidth: 160,
         paddingVertical: 4,

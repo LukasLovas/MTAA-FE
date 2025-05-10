@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 function RootNavigator() {
   const { token } = useAuth();
@@ -7,13 +8,13 @@ function RootNavigator() {
   return (
     <Stack>
       {token ? (
-        <Stack.Screen 
-            name="(tabs)" 
-            options={{ headerShown: false }}
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false }}
         />
       ) : (
-        <Stack.Screen 
-          name="login" 
+        <Stack.Screen
+          name="login"
           options={{ headerShown: false }}
         />
       )}
@@ -24,7 +25,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
