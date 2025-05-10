@@ -17,7 +17,7 @@ export interface transaction{
     transactionTypeEnum: string;
     category: category;
     budget: budget;
-    location: location;
+    location: location | null;
     frequencyEnum: string;
     note: string;
     filename: string;
