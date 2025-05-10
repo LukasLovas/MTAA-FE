@@ -20,7 +20,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (stored === "dark") {
         setTheme(DarkTheme);
       } else {
-        // Ak je stored === "light" alebo null, vždy svetlá téma
         setTheme(LightTheme);
       }
     })();
