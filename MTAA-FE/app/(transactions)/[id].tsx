@@ -157,19 +157,16 @@ export default function TransactionFormScreen() {
       return Alert.alert("Please fill Title and Amount.");
     setSaving(true);
 
+    let generatedFilename = "";
+
     if (attachment && mode === "create") {
       const { uri, type } = attachment; 
       const extension = uri.split(".").pop();
       let mimeType = type || `image/${extension}`;
       const uuid = await Crypto.randomUUID();
-      const generatedFilename = `${uuid}.${extension}`;
-
-      console.log(generatedFilename);
+      generatedFilename = `${uuid}.${extension}`;
 
       const localUri = `${FileSystem.cacheDirectory}${generatedFilename}`;
-
-      console.log('Source URI:', uri);
-      console.log('Destination URI:', localUri);
       
       await FileSystem.copyAsync({ from: uri, to: localUri });
 
@@ -183,9 +180,6 @@ export default function TransactionFormScreen() {
           mimeType = "image/svg+xml";
         }
       }
-      console.log("mimeType", mimeType);
-
-      console.log("Point 1");
 
       const signedUrlResponse = await api.get(
         "images/generate-upload-url",
@@ -196,8 +190,6 @@ export default function TransactionFormScreen() {
           },
         }
       )
-
-      console.log("Point 2");
 
       if (!signedUrlResponse.data) {
         Alert.alert("Failed to generate upload URL");
@@ -213,13 +205,10 @@ export default function TransactionFormScreen() {
         },
       });
 
-      console.log("Point 3", uploadRes);
-
       if (uploadRes.status !== 200 && uploadRes.status !== 201) {
         throw new Error("Upload to Firebase failed");
       }
 
-      setFilename(generatedFilename);
     }
 
     const userId = await getUserIdFromToken();
@@ -235,13 +224,12 @@ export default function TransactionFormScreen() {
       location,
       frequency,
       note,
-      filename,
+      filename: generatedFilename,
       currency_code: "EUR",
     };
 
     try {
       if (mode === "create") {
-        console.log("Creating transaction with payload:", payload);
         await api.post("/transactions", payload);
       } else {
         await api.put(`/transactions/${params.id}`, payload);

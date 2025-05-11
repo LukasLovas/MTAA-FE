@@ -1,16 +1,19 @@
-// app/(transactions)/transaction.tsx
-
-import React, { useMemo, useContext } from "react";
+import React, { useMemo, useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  Alert,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, router } from "expo-router";
+import { Image } from 'expo-image';
 import { ThemeContext } from "@/contexts/ThemeContext";
+import { api } from "@/service/apiClient";
 
 export interface transaction {
   id: number;
@@ -62,6 +65,10 @@ const formatDate = (iso: string) => {
 
 const TransactionScreen = () => {
   const { theme } = useContext(ThemeContext);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [imageURL, setImageURL] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+
   const params = useLocalSearchParams<{
     id: string;
     label: string;
@@ -92,10 +99,58 @@ const TransactionScreen = () => {
     [params.creationDate]
   );
 
-  
+  const fetchImage = async () => {
+    try {
+      setImageLoading(true);
+      const { data } = await api.get(
+        '/images/generateDownloadUrl',
+        {
+          params: {
+            filename: params.filename,
+          },
+        }
+      );
+      const url = data.downloadUrl;
+      setImageURL(url);
+    }
+    catch (err) {
+      console.error(err);
+    } finally {
+      setImageLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (params.filename && params.filename.length > 0) {
+      fetchImage();
+    }
+  }, []);
+
+  const deleteTransaction = async () => {
+    Alert.alert(
+      "Delete Transaction",
+      "Are you sure you want to delete this transaction?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/transactions/${params.id}`);
+              router.back();
+            } catch (error) {
+              console.error("Error deleting transaction:", error);
+              Alert.alert("Failed to delete transaction");
+            }
+          },
+        },
+      ]
+    );
+  }
 
   return (
-    <>
+    <View style={[styles.fullScreen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen
         options={{
           headerTitle: "Transaction",
@@ -114,18 +169,23 @@ const TransactionScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.row}>
-          <View
+          <TouchableOpacity
+            onPress={() => setImageOpen(true)}
             style={[
               styles.avatar,
               { backgroundColor: theme.colors.border },
             ]}
           >
-            <Ionicons
-              name="receipt-outline"
-              size={24}
-              color={theme.colors.text}
-            />
-          </View>
+            {imageLoading ? (
+              <ActivityIndicator size="small" color={theme.colors.text} />
+            ) : (
+              <Image
+                source={{ uri: imageURL }}
+                style={{ width: 48, height: 48, borderRadius: 24 }}
+                contentFit="cover"
+              />
+            )}
+          </TouchableOpacity>
 
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.title, { color: theme.colors.text }]}>
@@ -215,14 +275,37 @@ const TransactionScreen = () => {
               backgroundColor: theme.colors.notification,
             },
           ]}
-          onPress={() => console.warn("Delete pressed")}
+          onPress={deleteTransaction}
         >
           <Text style={[styles.btnTxt, { color: theme.colors.text }]}>
             Delete
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </>
+      {imageOpen && (
+        <>
+          <TouchableWithoutFeedback
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={() => setImageOpen(false)}
+          >
+            <Image
+              source={{ uri: imageURL }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="contain"
+            />
+          </TouchableWithoutFeedback>
+        </>
+      )}
+    </View>
   );
 };
 
@@ -255,6 +338,7 @@ const Pill = ({
 };
 
 const styles = StyleSheet.create({
+  fullScreen: { flex: 1 },
   row: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
   avatar: {
     width: 48,
