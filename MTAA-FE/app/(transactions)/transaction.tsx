@@ -92,6 +92,8 @@ const TransactionScreen = () => {
     [params.creationDate]
   );
 
+  
+
   return (
     <>
       <Stack.Screen

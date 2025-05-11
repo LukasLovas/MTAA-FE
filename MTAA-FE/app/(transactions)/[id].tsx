@@ -15,8 +15,10 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, router, useLocalSearchParams } from "expo-router";
+import * as FileSystem from "expo-file-system";
+import * as Crypto from "expo-crypto";
 
-import { api } from "@/service/apiClient";
+import { api, getUserIdFromToken } from "@/service/apiClient";
 import { ThemeContext } from "@/contexts/ThemeContext";
 
 type Mode = "create" | "edit";
@@ -45,21 +47,8 @@ export default function TransactionFormScreen() {
   const mode: Mode =
     params.id && params.id !== "new" ? "edit" : "create";
 
-  const categories = [
-    "Food",
-    "Transport",
-    "Entertainment",
-    "Health",
-    "Shopping",
-    "Other",
-  ];
-  const budgets = [
-    "Budget 1",
-    "Budget 2",
-    "Budget 3",
-    "Budget 4",
-    "Budget 5",
-  ];
+  const [categories, setCategories] = useState<string[]>([]);
+  const [budgets, setBudgets] = useState<string[]>([]);
 
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [title, setTitle] = useState("");
@@ -79,9 +68,33 @@ export default function TransactionFormScreen() {
     attachment,
     setAttachment,
   ] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
+  const [filename, setFilename] = useState<string>("");
+
   const [saving, setSaving] = useState(false);
 
+  const fetchCategories = async () => {
+    try {
+      const { data } = await api.get("/category");
+      setCategories(data.map((c: any) => c.label));
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }
+
+  const fetchBudgets = async () => {
+    try {
+      const { data } = await api.get("/budgets/byUsername");
+      setBudgets(data.map((b: any) => b.label));
+    } catch (error) {
+      console.error("Error fetching budgets:", error);
+    }
+  };
+
   useEffect(() => {
+    fetchCategories();
+    fetchBudgets();
+
     if (mode === "edit") {
       setTitle(params.label ?? "");
       setAmount(params.amount ?? "");
@@ -96,11 +109,9 @@ export default function TransactionFormScreen() {
         (params.frequencyEnum as any) ?? "DEFAULT"
       );
       setNote(params.note ?? "");
-      setAttachment(
-        params.filename
-          ? ({ uri: params.filename } as ImagePicker.ImagePickerAsset)
-          : null
-      );
+      params.filename === "" 
+      ? setAttachment(null) 
+      : setAttachment({ uri: params.filename } as ImagePicker.ImagePickerAsset);
     }
   }, []);
 
@@ -124,11 +135,21 @@ export default function TransactionFormScreen() {
     useState(false);
 
   const pickAttachment = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 1,
-    });
-    if (!res.canceled) setAttachment(res.assets[0]);
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert("Permission required", "We need camera roll permissions to proceed!");
+        return;
+      }
+
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.9,
+      });
+      
+      if (!res.canceled) {
+        setAttachment(res.assets[0]);
+      } 
+
   };
 
   const onSave = async () => {
@@ -136,24 +157,95 @@ export default function TransactionFormScreen() {
       return Alert.alert("Please fill Title and Amount.");
     setSaving(true);
 
+    if (attachment && mode === "create") {
+      const { uri, type } = attachment; 
+      const extension = uri.split(".").pop();
+      let mimeType = type || `image/${extension}`;
+      const uuid = await Crypto.randomUUID();
+      const generatedFilename = `${uuid}.${extension}`;
+
+      console.log(generatedFilename);
+
+      const localUri = `${FileSystem.cacheDirectory}${generatedFilename}`;
+
+      console.log('Source URI:', uri);
+      console.log('Destination URI:', localUri);
+      
+      await FileSystem.copyAsync({ from: uri, to: localUri });
+
+      if (mimeType === "image") {
+        if (extension === "jpg" || extension === "jpeg") {
+          mimeType = "image/jpeg";
+        }
+        else if (extension === "png") {
+          mimeType = "image/png";
+        } else if (extension === "svg") {
+          mimeType = "image/svg+xml";
+        }
+      }
+      console.log("mimeType", mimeType);
+
+      console.log("Point 1");
+
+      const signedUrlResponse = await api.get(
+        "images/generate-upload-url",
+        {
+          params: {
+            filename: generatedFilename,
+            contentType: mimeType,
+          },
+        }
+      )
+
+      console.log("Point 2");
+
+      if (!signedUrlResponse.data) {
+        Alert.alert("Failed to generate upload URL");
+        return;
+      }
+      const { uploadUrl } = signedUrlResponse.data;
+      
+      const uploadRes = await FileSystem.uploadAsync(uploadUrl, localUri, {
+        httpMethod: "PUT",
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          "Content-Type": mimeType || "image/jpeg",
+        },
+      });
+
+      console.log("Point 3", uploadRes);
+
+      if (uploadRes.status !== 200 && uploadRes.status !== 201) {
+        throw new Error("Upload to Firebase failed");
+      }
+
+      setFilename(generatedFilename);
+    }
+
+    const userId = await getUserIdFromToken();
+
     const payload = {
-      user_id: 2,
+      user_id: userId,
       label: title,
-      amount:
-        Number(amount) * (type === "EXPENSE" ? -1 : 1),
-      time: (date ?? new Date()).toISOString(),
+      amount: Number(amount),
+      time: date?.toISOString(),
       transaction_type: type,
-      category_id: 2,
-      budget_id: 1,
-      location_id: 1,
+      category,
+      budget,
+      location,
       frequency,
       note,
-      filename: "string",
+      filename,
       currency_code: "EUR",
     };
 
     try {
-      // await mode==='create' ? api.post(...) : api.put(...)
+      if (mode === "create") {
+        console.log("Creating transaction with payload:", payload);
+        await api.post("/transactions", payload);
+      } else {
+        await api.put(`/transactions/${params.id}`, payload);
+      }
       router.back();
     } catch (e) {
       Alert.alert("Failed to save transaction");
@@ -197,7 +289,6 @@ export default function TransactionFormScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Expense / Income toggle */}
           <View
             style={[
               styles.segment,
@@ -235,7 +326,6 @@ export default function TransactionFormScreen() {
             ))}
           </View>
 
-          {/* Title */}
           <TextInput
             placeholder="Title"
             placeholderTextColor={theme.colors.border}
@@ -250,7 +340,6 @@ export default function TransactionFormScreen() {
             onChangeText={setTitle}
           />
 
-          {/* Date & Amount */}
           <View style={styles.row}>
             <TouchableOpacity
               style={[
@@ -299,7 +388,6 @@ export default function TransactionFormScreen() {
             />
           </View>
 
-          {/* Location */}
           <TextInput
             placeholder="Choose location"
             placeholderTextColor={theme.colors.border}
@@ -314,7 +402,6 @@ export default function TransactionFormScreen() {
             onChangeText={setLocation}
           />
 
-          {/* Category dropdown */}
           <TouchableOpacity
             style={[
               styles.input,
@@ -366,7 +453,6 @@ export default function TransactionFormScreen() {
             </View>
           )}
 
-          {/* Budget dropdown */}
           <TouchableOpacity
             style={[
               styles.input,
@@ -418,7 +504,6 @@ export default function TransactionFormScreen() {
             </View>
           )}
 
-          {/* Frequency pills */}
           <View style={styles.freqRow}>
             {(
               ["DEFAULT", "UPCOMING", "SUBSCRIPTION"] as const
@@ -453,7 +538,6 @@ export default function TransactionFormScreen() {
             ))}
           </View>
 
-          {/* Notes */}
           <TextInput
             placeholder="Notes"
             placeholderTextColor={theme.colors.border}
@@ -471,7 +555,6 @@ export default function TransactionFormScreen() {
             onChangeText={setNote}
           />
 
-          {/* Attachment */}
           <TouchableOpacity
             style={[
               styles.attachRow,
@@ -509,7 +592,6 @@ export default function TransactionFormScreen() {
             />
           </TouchableOpacity>
 
-          {/* Save */}
           <TouchableOpacity
             style={[
               styles.saveBtn,

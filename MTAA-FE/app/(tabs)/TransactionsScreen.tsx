@@ -98,7 +98,7 @@ export default function TransactionsScreen() {
             params: {
               id: item.id,
               label: item.label,
-              amount: item.amount,
+              amount: item.transactionTypeEnum === "INCOME" ? item.amount : -item.amount,
               creationDate: item.creationDate,
               transactionTypeEnum: item.transactionTypeEnum,
               category: item.category.label,
@@ -143,7 +143,6 @@ export default function TransactionsScreen() {
       />
 
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Search + Add */}
         <View style={styles.searchRow}>
           <View style={[styles.searchBox, { backgroundColor: theme.colors.card }]}>
             <Ionicons name="search" size={18} color={theme.colors.text} style={styles.icon} />
@@ -164,7 +163,6 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Filters */}
         <View style={styles.pickers}>
           <View style={styles.pickerBlock}>
             <Text style={[styles.pickerLabel, { color: theme.colors.text }]}>Filtering</Text>
@@ -195,22 +193,37 @@ export default function TransactionsScreen() {
           </View>
         </View>
 
-        {/* List */}
         {loading ? (
           <ActivityIndicator style={{ marginTop: 32 }} />
         ) : (
-          <FlatList
-            data={data}
-            keyExtractor={(_, i) => String(i)}
-            renderItem={renderItem}
-            ItemSeparatorComponent={() => (
-              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
-            )}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-          />
-        )}
+            <FlatList
+              data={data}
+              keyExtractor={(_, i) => String(i)}
+              renderItem={renderItem}
+              ItemSeparatorComponent={() => (
+                <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+              )}
+              contentContainerStyle={{ paddingBottom: 24 }}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text
+                    style={[styles.emptyText, { color: theme.colors.text }]}
+                  >
+                    No transactions found
+                  </Text>
+                  <Text
+                    style={[styles.emptySubtext, { color: theme.colors.border }]}
+                  >
+                    Tap the + button to create your first transaction
+                  </Text>
+                </View>
+              }
+            />
+            )
+          
+        }
       </View>
     </>
   );
@@ -263,4 +276,18 @@ const styles = StyleSheet.create({
   label: { fontWeight: "500" },
   sub: { fontSize: 12, marginBottom: 4 },
   amount: { fontWeight: "500", alignSelf: "center" },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: "center",
+  },
 });
