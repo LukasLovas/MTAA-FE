@@ -1,7 +1,6 @@
-import { Stack } from "expo-router";
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
-import { ThemeProvider } from "../contexts/ThemeContext";
-
+import { Stack } from 'expo-router';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 function RootNavigator() {
   const { token } = useAuth();
 

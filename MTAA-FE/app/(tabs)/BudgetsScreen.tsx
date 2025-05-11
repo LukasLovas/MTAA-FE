@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +18,8 @@ import AppHeader from "../header/AppHeader";
 import { api } from "@/service/apiClient";
 import { budget as BudgetType } from "../(budgets)/budget";
 import { ThemeContext } from "@/contexts/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 
 export default function BudgetsScreen() {
   const { theme } = useContext(ThemeContext);
@@ -28,19 +31,41 @@ export default function BudgetsScreen() {
   const [query, setQuery] = useState("");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const fetchBudgets = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get<BudgetType[]>("/budgets/byUsername");
-      setBudgetList(data);
-    } catch (error) {
-      console.error("Error fetching budgets:", error);
-    } finally {
-      setLoading(false);
+const fetchBudgets = async () => {
+  const net = await NetInfo.fetch();
+  if (!net.isConnected) {
+    const cached = await AsyncStorage.getItem("cachedBudgets");
+    if (cached) {
+      Alert.alert("Offline mode", "Showing cached budgets.");
+      setBudgetList(JSON.parse(cached));
+    } else {
+      Alert.alert("Offline mode", "No cached budgets.");
+      setBudgetList([]);
     }
-  };
+    setLoading(false);
+    return;
+  }
 
-  // Reload on focus
+  setLoading(true);
+  try {
+    const { data } = await api.get<BudgetType[]>("/budgets/byUsername");
+    setBudgetList(data);
+    await AsyncStorage.setItem("cachedBudgets", JSON.stringify(data));
+  } catch (error: any) {
+    const msg = error?.message ?? "Neznáma chyba";
+    Alert.alert("Error", `Couldn't load budgets:\n${msg}`);
+    const cached = await AsyncStorage.getItem("cachedBudgets");
+    if (cached) {
+      setBudgetList(JSON.parse(cached));
+      Alert.alert("Offline mode", "Showing cached budgets.");
+    } else {
+      setBudgetList([]);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
   useFocusEffect(
     useCallback(() => {
       fetchBudgets();
@@ -144,7 +169,6 @@ export default function BudgetsScreen() {
       <View
         style={[styles.container, { backgroundColor: theme.colors.background }]}
       >
-        {/* Search row */}
         <View style={styles.searchRow}>
           <View
             style={[styles.searchBox, { backgroundColor: theme.colors.card }]}
@@ -195,7 +219,6 @@ export default function BudgetsScreen() {
           </View>
         </View>
 
-        {/* List */}
         {loading ? (
           <ActivityIndicator style={{ marginTop: 32 }} />
         ) : (

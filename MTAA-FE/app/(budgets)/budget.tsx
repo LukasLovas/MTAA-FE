@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  FlatList,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 
@@ -27,6 +30,13 @@ export interface budget {
   lastResetDate: string;
 }
 
+export interface transaction {
+  id: number;
+  label: string;
+  amount: number;
+  creationDate: string;
+}
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDate = (iso: string) => {
   const d = new Date(iso);
@@ -39,21 +49,79 @@ export default function BudgetScreen() {
   const [budget, setBudget] = useState<budget | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [recent, setRecent] = useState<transaction[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
+
   const fetchBudget = async () => {
     setLoading(true);
+
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      const cached = await AsyncStorage.getItem("cachedBudgets");
+      if (cached) {
+        const all: budget[] = JSON.parse(cached);
+        const fromCache = all.find((b) => String(b.id) === String(id));
+        if (fromCache) {
+          Alert.alert("Offline mode", "Showing cached data.");
+          setBudget(fromCache);
+        } else {
+          Alert.alert("Offline mode", "This budget is not cached.");
+        }
+      } else {
+        Alert.alert("Offline mode", "No budgets are cached.");
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data } = await api.get<budget>(`/budgets/${id}`);
       setBudget(data);
-    } catch (e) {
-      console.error("Error fetching budget:", e);
+
+      const existing = await AsyncStorage.getItem("cachedBudgets");
+      let list: budget[] = existing ? JSON.parse(existing) : [];
+      const idx = list.findIndex((b) => String(b.id) === String(id));
+      if (idx >= 0) list[idx] = data;
+      else list.push(data);
+      await AsyncStorage.setItem("cachedBudgets", JSON.stringify(list));
+    } catch (e: any) {
+      const cached = await AsyncStorage.getItem("cachedBudgets");
+      if (cached) {
+        const all: budget[] = JSON.parse(cached);
+        const fromCache = all.find((b) => String(b.id) === String(id));
+        if (fromCache) {
+          Alert.alert("Error", "Showing cached data.");
+          setBudget(fromCache);
+        } else {
+          Alert.alert("Error", e.message);
+        }
+      } else {
+        Alert.alert("Error", e.message);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRecentSpending = async () => {
+    setLoadingRecent(true);
+    try {
+      const { data } = await api.get<transaction[]>(
+        `/transactions/budget/${id}`
+      );
+      setRecent(data);
+    } catch (e) {
+      console.error("Error fetching recent spending:", e);
+      setRecent([]);
+    } finally {
+      setLoadingRecent(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
       fetchBudget();
+      fetchRecentSpending();
     }, [id])
   );
 
@@ -124,13 +192,12 @@ export default function BudgetScreen() {
     lastResetDate,
   } = budget;
 
-  const formattedAmount = `€${amount.toFixed(2)} left of €${initialAmount.toFixed(2)}`;
+  const formattedAmount = `€${amount.toFixed(3)}\n left of\n €${initialAmount.toFixed(3)}`;
   const startDateStr = formatDate(startDate);
   const lastResetStr = lastResetDate ? formatDate(lastResetDate) : "N/A";
   const percentLeft = Math.round((amount / initialAmount) * 100);
-  const intervalStr = `${intervalValue} ${intervalEnum.toLowerCase()}${
-    intervalValue !== 1 ? "s" : ""
-  }`;
+  const intervalStr = `${intervalValue} ${intervalEnum.toLowerCase()}${intervalValue !== 1 ? "s" : ""
+    }`;
 
   return (
     <View style={[styles.fullScreen, { backgroundColor: theme.colors.background }]}>
@@ -215,16 +282,30 @@ export default function BudgetScreen() {
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
             Recent Spending
           </Text>
-          <View
-            style={[
-              styles.emptyState,
-              { backgroundColor: theme.colors.card },
-            ]}
-          >
-            <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-              No recent transactions
-            </Text>
-          </View>
+
+          {loadingRecent ? (
+            <ActivityIndicator />
+          ) : recent.length > 0 ? (
+            recent.map(item => (
+              <View key={item.id} style={styles.spendingRow}>
+                <Text style={[styles.spendingLabel, { color: theme.colors.text }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.spendingAmount, { color: theme.colors.text }]}>
+                  €{item.amount.toFixed(2)}
+                </Text>
+                <Text style={[styles.spendingDate, { color: theme.colors.border }]}>
+                  {formatDate(item.creationDate)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={[styles.emptyState, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+                No recent transactions
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ flex: 1 }} />
@@ -305,13 +386,21 @@ const styles = StyleSheet.create({
 
   spendingSection: { marginTop: 16, marginBottom: 20 },
   sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 10 },
+  spendingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  spendingLabel: { flex: 1 },
+  spendingAmount: { width: 80, textAlign: "right" },
+  spendingDate: { width: 100, textAlign: "right", fontSize: 12 },
+
   emptyState: {
     padding: 20,
     borderRadius: 8,
     alignItems: "center",
   },
   emptyText: { fontSize: 14 },
-
   btn: {
     borderRadius: 8,
     paddingVertical: 14,

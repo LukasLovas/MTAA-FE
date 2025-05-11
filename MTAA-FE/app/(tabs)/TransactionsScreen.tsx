@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Alert
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,8 @@ import AppHeader from "../header/AppHeader";
 import { api } from "@/service/apiClient";
 import { transaction } from "../(transactions)/transaction";
 import { ThemeContext } from "@/contexts/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 
 export default function TransactionsScreen() {
   const { theme } = useContext(ThemeContext);
@@ -30,13 +33,40 @@ export default function TransactionsScreen() {
   const [filter, setFilter] = useState<"all" | "incoming" | "outgoing">("all");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+
+  const STORAGE_KEY = "cachedTransactions";
+
   const fetchTx = async () => {
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      const cached = await AsyncStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        Alert.alert("Offline mode", "Showing cached transactions.");
+        setTransactionList(JSON.parse(cached));
+      } else {
+        Alert.alert("Offline mode", "No cached transactions.");
+        setTransactionList([]);
+      }
+      setLoading(false);
+      return;
+    }
+
+
     if (!loading) setLoading(true);
     try {
       const { data } = await api.get<transaction[]>("/transactions");
       setTransactionList(data);
-    } catch (err) {
-      console.error(err);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err: any) {
+      const msg = err.message ?? "Unknown error";
+      Alert.alert("Error", `Couldn't load transactions:\n${msg}`);
+      const cached = await AsyncStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        setTransactionList(JSON.parse(cached));
+        Alert.alert("Offline mode", "Showing cached transactions.");
+      } else {
+        setTransactionList([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -86,7 +116,7 @@ export default function TransactionsScreen() {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${pad(d.getFullYear())} ` +
-           `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const renderItem = useCallback(
@@ -196,33 +226,33 @@ export default function TransactionsScreen() {
         {loading ? (
           <ActivityIndicator style={{ marginTop: 32 }} />
         ) : (
-            <FlatList
-              data={data}
-              keyExtractor={(_, i) => String(i)}
-              renderItem={renderItem}
-              ItemSeparatorComponent={() => (
-                <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
-              )}
-              contentContainerStyle={{ paddingBottom: 24 }}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text
-                    style={[styles.emptyText, { color: theme.colors.text }]}
-                  >
-                    No transactions found
-                  </Text>
-                  <Text
-                    style={[styles.emptySubtext, { color: theme.colors.border }]}
-                  >
-                    Tap the + button to create your first transaction
-                  </Text>
-                </View>
-              }
-            />
-            )
-          
+          <FlatList
+            data={data}
+            keyExtractor={(_, i) => String(i)}
+            renderItem={renderItem}
+            ItemSeparatorComponent={() => (
+              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+            )}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text
+                  style={[styles.emptyText, { color: theme.colors.text }]}
+                >
+                  No transactions found
+                </Text>
+                <Text
+                  style={[styles.emptySubtext, { color: theme.colors.border }]}
+                >
+                  Tap the + button to create your first transaction
+                </Text>
+              </View>
+            }
+          />
+        )
+
         }
       </View>
     </>

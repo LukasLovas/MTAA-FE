@@ -1,5 +1,5 @@
 import axios, { AxiosRequestHeaders, InternalAxiosRequestConfig } from 'axios';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 let getToken: () => string | null = () => null;
 export const registerTokenGetter = (fn: () => string | null) => {
@@ -7,14 +7,22 @@ export const registerTokenGetter = (fn: () => string | null) => {
 };
 
 export const api = axios.create({
-  baseURL: 'http://10.10.14.76:8080',
+  baseURL: 'http://192.168.0.102:8080',
 });
 
-api.interceptors.request.use((cfg: InternalAxiosRequestConfig) => {
-  const token = getToken();
-  if (token) (cfg.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`;
-  return cfg;
-});
+api.interceptors.request.use(
+  async (cfg: InternalAxiosRequestConfig) => {
+    const token = getToken();
+    if (token) (cfg.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`;
+    return cfg;
+  },
+  err => Promise.reject(err)
+);
+
+api.interceptors.response.use(
+  res => res,
+  err => Promise.reject(err)
+);
 
 interface JwtPayload {
   user_id: number;
@@ -26,13 +34,7 @@ export function getUserIdFromToken(): number | null {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
     return decoded.user_id ?? null;
-  } catch (e) {
-    console.warn('Invalid JWT:', e);
+  } catch {
     return null;
   }
 }
-
-api.interceptors.response.use(
-  res => res,
-  err => Promise.reject(err)
-);
