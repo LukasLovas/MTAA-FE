@@ -7,6 +7,7 @@ export interface AuthState {
   token: string | null;
   signIn(username: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  signUp(username: string, password: string): Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -26,6 +27,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     })();
   }, []);
+
+    const signUp = async (username: string, password: string) => {
+        const { status } = await api.post('/auth/register', { username, password });
+        if (status == 500) {
+            throw new Error("Username already exists");
+        }
+    }
 
   const signIn = async (username: string, password: string) => {
     const { data } = await api.post('/auth/login', { username, password });
@@ -48,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ token, signIn, signOut }}>
+    <AuthContext.Provider value={{ token, signIn, signOut, signUp }}>
       {children}
     </AuthContext.Provider>
   );

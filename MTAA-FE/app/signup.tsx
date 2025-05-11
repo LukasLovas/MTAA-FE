@@ -9,13 +9,13 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from "react-native";
-import { Redirect, router } from "expo-router";
+import { Redirect, router, Stack } from "expo-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { ThemeContext } from "../contexts/ThemeContext";
 
-export default function LoginScreen() {
-    const { signIn } = useAuth();
+export default function SignUpScreen() {
+    const { signUp } = useAuth();
     const { theme } = useContext(ThemeContext);
 
     const [username, setUsername] = useState("");
@@ -23,15 +23,14 @@ export default function LoginScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [redirect, setRedirect] = useState(false);
 
-    const handleLogin = async () => {
+    const handleRegister = async () => {
         try {
             setSubmitting(true);
-            await signIn(username.trim(), password);
+            await signUp(username.trim(), password);
             setRedirect(true);
         } catch (err: any) {
-            console.error("Login error:", err);
             Alert.alert(
-                "Login failed",
+                "Registration failed",
                 err?.response?.data?.message ?? err?.message ?? "Unknown error"
             );
         } finally {
@@ -39,14 +38,21 @@ export default function LoginScreen() {
         }
     };
 
-    if (redirect) return <Redirect href="/(tabs)/DashboardScreen" />;
+    if (redirect) return <Redirect href="/login" />;
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
-            >
-                <TextInput
+        <>
+            <Stack.Screen
+                options={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: theme.colors.background },
+                }}
+            />
+            <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                >
+                    <TextInput
                     placeholder="Username"
                     placeholderTextColor={theme.colors.border}
                     autoCapitalize="none"
@@ -55,12 +61,12 @@ export default function LoginScreen() {
                     style={[
                         styles.input,
                         {
-                            borderBottomColor: theme.colors.border,
-                            color: theme.colors.text,
+                        borderBottomColor: theme.colors.border,
+                        color: theme.colors.text,
                         },
-                  ]}
-                />
-                <TextInput
+                    ]}
+                    />
+                    <TextInput
                     placeholder="Password"
                     placeholderTextColor={theme.colors.border}
                     secureTextEntry
@@ -69,37 +75,38 @@ export default function LoginScreen() {
                     style={[
                         styles.input,
                         {
-                            borderBottomColor: theme.colors.border,
-                            color: theme.colors.text,
+                        borderBottomColor: theme.colors.border,
+                        color: theme.colors.text,
                         },
                     ]}
-                />
+                    />
 
-                <TouchableOpacity
+                    <TouchableOpacity
                     style={[
                         styles.button,
                         { backgroundColor: theme.colors.primary, opacity: submitting ? 0.6 : 1 },
                     ]}
-                    onPress={handleLogin}
+                    onPress={handleRegister}
                     disabled={submitting}
-                >
-                  <Text style={[styles.buttonText, { color: theme.colors.card }]}>
-                      {submitting ? "Signing in…" : "Sign in"}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.link}
-                    onPress={() => {
-                        router.push("/signup");
-                    }}
-                >
-                    <Text style={{ color: theme.colors.text, textAlign: "center", marginTop: 16 }}>
-                        Don't have an account? Sign up
+                    >
+                    <Text style={[styles.buttonText, { color: theme.colors.card }]}>
+                        {submitting ? "Signing up…" : "Register"}
                     </Text>
-                </TouchableOpacity>
-            </KeyboardAvoidingView>
-        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.link}
+                        onPress={() => {
+                            router.push("/login");
+                        }}
+                    >
+                        <Text style={{ color: theme.colors.text, textAlign: "center", marginTop: 16 }}>
+                            Already have an account? Log in
+                        </Text>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            </View>
+        </>
     );
 }
 
