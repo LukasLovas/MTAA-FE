@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext } from "react";
+import React, { useMemo, useState, useContext, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,17 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 
 import AppHeader from "../header/AppHeader";
 import { ThemeContext } from "@/contexts/ThemeContext";
+import { api } from "@/service/apiClient";
 import { transaction } from "../(transactions)/transaction";
 
 type category_spending = {
@@ -21,6 +25,11 @@ type category_spending = {
 };
 
 const periods = ["DAY", "WEEK", "MONTH"] as const;
+const periodToPath: Record<typeof periods[number], string> = {
+  DAY: "today",
+  WEEK: "week",
+  MONTH: "month",
+};
 const COLORS = [
   "#ff6b6b",
   "#ffa801",
@@ -32,80 +41,114 @@ const COLORS = [
 
 export default function DashboardScreen() {
   const { theme } = useContext(ThemeContext);
-  const [active, setActive] = useState<(typeof periods)[number]>("DAY");
+  const [active, setActive] = useState<typeof periods[number]>("DAY");
 
   const [todaySpending, setTodaySpending] = useState<category_spending[]>([]);
-  const [weeklySpending, setWeeklySpending] = useState<category_spending[]>([
-    { category_name: "Food", amount: 100 },
-    { category_name: "Transport", amount: 50 },
-    { category_name: "Entertainment", amount: 200 },
-  ]);
-  const [monthlySpending, setMonthlySpending] = useState<category_spending[]>([
-    { category_name: "Food", amount: 300 },
-    { category_name: "Transport", amount: 150 },
-    { category_name: "Entertainment", amount: 400 },
-  ]);
-  const [latestTransactions, setLatestTransactions] = useState<transaction[]>([
-    {
-      id: 1,
-      label: "Groceries",
-      amount: 50,
-      creationDate: "2023-10-01T12:00:00Z",
-      transactionTypeEnum: "EXPENSE",
-      category: { id: 1, label: "Food" },
-      budget: {
-        id: 1,
-        label: "Monthly Budget",
-        amount: 1000,
-        initialAmount: 1000,
-        startDate: "2023-10-01",
-        intervalValue: 1,
-        intervalEnum: "MONTH",
-        lastResetDate: "2023-10-01",
-      },
-      location: { id: 1, name: "Supermarket", latitude: 0, longitude: 0 },
-      frequencyEnum: "ONE_TIME",
-      note: "",
-      filename: "",
-      currency: "€",
-    },
-    {
-      id: 2,
-      label: "Bus Ticket",
-      amount: 2.5,
-      creationDate: "2023-10-02T08:00:00Z",
-      transactionTypeEnum: "EXPENSE",
-      category: { id: 2, label: "Transport" },
-      budget: {
-        id: 1,
-        label: "Monthly Budget",
-        amount: 1000,
-        initialAmount: 1000,
-        startDate: "2023-10-01",
-        intervalValue: 1,
-        intervalEnum: "MONTH",
-        lastResetDate: "2023-10-01",
-      },
-      location: null,
-      frequencyEnum: "ONE_TIME",
-      note: "",
-      filename: "",
-      currency: "€",
-    },
-  ]);
+  const [weeklySpending, setWeeklySpending] = useState<category_spending[]>([]);
+  const [monthlySpending, setMonthlySpending] = useState<category_spending[]>([]);
+
+  const [allTransactions, setAllTransactions] = useState<transaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
+
+
+  useEffect(() => {
+  AsyncStorage.removeItem('spending_DAY');
+  AsyncStorage.removeItem('spending_WEEK');
+  AsyncStorage.removeItem('spending_MONTH');
+}, []);
+
+
+  const fetchSpending = useCallback(async (period: typeof periods[number]) => {
+    const key = `spending_${period}`;
+    const endpoint = `/transactions/expenses/${periodToPath[period]}`;
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      const cached = await AsyncStorage.getItem(key);
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (period === "DAY") setTodaySpending(data);
+        if (period === "WEEK") setWeeklySpending(data);
+        if (period === "MONTH") setMonthlySpending(data);
+      }
+      return;
+    }
+    try {
+      const { data } = await api.get<category_spending[]>(endpoint);
+      await AsyncStorage.setItem(key, JSON.stringify(data));
+      if (period === "DAY") setTodaySpending(data);
+      if (period === "WEEK") setWeeklySpending(data);
+      if (period === "MONTH") setMonthlySpending(data);
+    } catch (e) {
+      console.warn(`Failed to fetch ${period} spending, using cache`, e);
+      const cached = await AsyncStorage.getItem(key);
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (period === "DAY") setTodaySpending(data);
+        if (period === "WEEK") setWeeklySpending(data);
+        if (period === "MONTH") setMonthlySpending(data);
+      }
+    }
+  }, []);
+
+  // Reload spending whenever period changes
+  useEffect(() => {
+    fetchSpending(active);
+  }, [active, fetchSpending]);
+
+  // Fetch and cache all transactions once
+  useEffect(() => {
+    (async () => {
+      const key = "cachedTx";
+      setLoadingTx(true);
+      const net = await NetInfo.fetch();
+      if (!net.isConnected) {
+        const cached = await AsyncStorage.getItem(key);
+        if (cached) setAllTransactions(JSON.parse(cached));
+        setLoadingTx(false);
+        return;
+      }
+      try {
+        const { data } = await api.get<transaction[]>("/transactions");
+        await AsyncStorage.setItem(key, JSON.stringify(data));
+        setAllTransactions(data);
+      } catch (e) {
+        console.warn("Failed to fetch transactions, using cache", e);
+        const cached = await AsyncStorage.getItem(key);
+        if (cached) setAllTransactions(JSON.parse(cached));
+      } finally {
+        setLoadingTx(false);
+      }
+    })();
+  }, []);
 
   const spendingData = useMemo(() => {
-    switch (active) {
-      case "DAY":
-        return todaySpending;
-      case "WEEK":
-        return weeklySpending;
-      default:
-        return monthlySpending;
-    }
+    const raw = (() => {
+      switch (active) {
+        case "DAY":
+          return todaySpending;
+        case "WEEK":
+          return weeklySpending;
+        default:
+          return monthlySpending;
+      }
+    })();
+
+    return raw.filter(item => item.category_name != null && item.category_name !== "");
   }, [active, todaySpending, weeklySpending, monthlySpending]);
 
-  const totalSpent = spendingData.reduce((s, c) => s + c.amount, 0);
+  // Derive latest transactions for selected period
+  const recentTx = useMemo(() => {
+    const now = Date.now();
+    let cutoff = now;
+    if (active === "DAY") cutoff -= 24 * 60 * 60 * 1000;
+    else if (active === "WEEK") cutoff -= 7 * 24 * 60 * 60 * 1000;
+    else cutoff -= 30 * 24 * 60 * 60 * 1000;
+
+    return allTransactions
+      .filter(t => new Date(t.creationDate).getTime() >= cutoff)
+      .sort((a, b) => Date.parse(b.creationDate) - Date.parse(a.creationDate))
+      .slice(0, 5);
+  }, [allTransactions, active]);
 
   // chart geometry
   const radius = 80;
@@ -115,16 +158,14 @@ export default function DashboardScreen() {
   const circumference = 2 * Math.PI * radius;
   let accumOffset = 0;
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const padNum = (n: number) => String(n).padStart(2, "0");
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return (
-      `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ` +
-      `${pad(d.getHours())}:${pad(d.getMinutes())}`
+      `${padNum(d.getDate())}.${padNum(d.getMonth() + 1)}.${d.getFullYear()} ` +
+      `${padNum(d.getHours())}:${padNum(d.getMinutes())}`
     );
   };
-
-  const formattedLatest = latestTransactions.slice(0, 4);
 
   return (
     <>
@@ -158,7 +199,7 @@ export default function DashboardScreen() {
         {/* Spending Card */}
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <View style={styles.segment}>
-            {periods.map((p) => (
+            {periods.map(p => (
               <TouchableOpacity
                 key={p}
                 style={[
@@ -172,10 +213,7 @@ export default function DashboardScreen() {
                   style={[
                     styles.segmentTxt,
                     { color: theme.colors.text },
-                    active === p && {
-                      color: theme.colors.background,
-                      fontWeight: "600",
-                    },
+                    active === p && { color: theme.colors.background, fontWeight: "600" },
                   ]}
                 >
                   {p[0] + p.slice(1).toLowerCase()}
@@ -188,11 +226,9 @@ export default function DashboardScreen() {
             <Svg width={cx * 2} height={cy * 2}>
               <G rotation="-90" origin={`${cx}, ${cy}`}>
                 {spendingData.map((c, i) => {
-                  const fraction = c.amount / totalSpent || 0;
+                  const fraction = c.amount / (spendingData.reduce((s, x) => s + x.amount, 0)) || 0;
                   const dashLength = fraction * circumference;
-                  const strokeDasharray = `${dashLength} ${
-                    circumference - dashLength
-                  }`;
+                  const strokeDasharray = `${dashLength} ${circumference - dashLength}`;
                   const circle = (
                     <Circle
                       key={c.category_name}
@@ -213,15 +249,9 @@ export default function DashboardScreen() {
               </G>
             </Svg>
             <View style={styles.donutLabel}>
-              <Text
-                style={{
-                  textAlign: "center",
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                }}
-              >
+              <Text style={{ textAlign: "center", fontWeight: "600", color: theme.colors.text }}>
                 You spent{"\n"}
-                <Text style={{ fontSize: 18 }}>{totalSpent}€</Text>
+                <Text style={{ fontSize: 18 }}>{spendingData.reduce((s, x) => s + x.amount, 0)}€</Text>
               </Text>
             </View>
           </View>
@@ -230,12 +260,7 @@ export default function DashboardScreen() {
             {spendingData.map((c, i) => (
               <View key={i} style={styles.legendItem}>
                 <Svg width={10} height={10} style={{ marginRight: 4 }}>
-                  <Circle
-                    cx={5}
-                    cy={5}
-                    r={5}
-                    fill={COLORS[i % COLORS.length]}
-                  />
+                  <Circle cx={5} cy={5} r={5} fill={COLORS[i % COLORS.length]} />
                 </Svg>
                 <Text style={[styles.legendTxt, { color: theme.colors.text }]}>
                   {c.category_name}
@@ -248,62 +273,59 @@ export default function DashboardScreen() {
         {/* Recent Transactions */}
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <View style={styles.recHeader}>
-            <Text style={[styles.recHeaderTxt, { color: theme.colors.text }]}>
-              Recent transactions
-            </Text>
+            <Text style={[styles.recHeaderTxt, { color: theme.colors.text }]}>Recent transactions</Text>
             <TouchableOpacity
-              onPress={() =>
-                router.push({ pathname: "/(transactions)/[id]", params: { id: "new" } })
-              }
+              onPress={() => router.push({ pathname: "/(transactions)/[id]", params: { id: "new" } })}
               style={[styles.recAdd, { backgroundColor: theme.colors.border }]}
             >
               <Ionicons name="add" size={20} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={formattedLatest}
-            keyExtractor={(t) => String(t.id)}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.txnRow}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(transactions)/transaction",
-                    params: {
-                      id: String(item.id),
-                      label: item.label,
-                      amount: item.amount,
-                      creationDate: item.creationDate,
-                      transactionTypeEnum: item.transactionTypeEnum,
-                      category: item.category.label,
-                      budget: item.budget.label,
-                      location: item.location ? item.location.name : "No location",
-                      frequencyEnum: item.frequencyEnum,
-                      note: item.note || "No note",
-                      filename: item.filename || "No file",
-                      currency: item.currency,
-                    },
-                  })
-                }
-              >
-                <View>
-                  <Text style={[styles.txnLabel, { color: theme.colors.text }]}>
-                    {item.label}
+          {loadingTx ? (
+            <ActivityIndicator style={{ alignSelf: "center" }} />
+          ) : (
+            <FlatList
+              data={recentTx}
+              keyExtractor={t => String(t.id)}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.txnRow}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(transactions)/transaction",
+                      params: {
+                        id: String(item.id),
+                        label: item.label,
+                        amount: item.transactionTypeEnum === "INCOME" ? item.amount : -item.amount,
+                        creationDate: item.creationDate,
+                        transactionTypeEnum: item.transactionTypeEnum,
+                        category: item.category.label,
+                        budget: item.budget.label,
+                        location: item.location ? item.location.name : "No location",
+                        frequencyEnum: item.frequencyEnum,
+                        note: item.note || "No note",
+                        filename: item.filename || "No file",
+                        currency: item.currency,
+                      },
+                    })
+                  }
+                >
+                  <View>
+                    <Text style={[styles.txnLabel, { color: theme.colors.text }]}>
+                      {item.label}
+                    </Text>
+                    <Text style={[styles.txnSub, { color: theme.colors.border }]}> {formatDate(item.creationDate)}</Text>
+                  </View>
+                  <Text style={[styles.txnAmt, { color: theme.colors.text }]}>
+                    {(item.amount > 0 ? "+" : "-") + Math.abs(item.amount)} {item.currency ?? "€"}
                   </Text>
-                  <Text style={[styles.txnSub, { color: theme.colors.border }]}>
-                    {formatDate(item.creationDate)}
-                  </Text>
-                </View>
-                <Text style={[styles.txnAmt, { color: theme.colors.text }]}>
-                  {(item.amount > 0 ? "+" : "-") + Math.abs(item.amount)}{" "}
-                  {item.currency ?? "€"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
+                </TouchableOpacity>
+              )}
+            />
+          )}
 
           <TouchableOpacity
             onPress={() => router.push("/(tabs)/TransactionsScreen")}
@@ -337,39 +359,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 4,
   },
-  segmentItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-  },
+  segmentItem: { paddingVertical: 6, paddingHorizontal: 18, borderRadius: 999 },
   segmentTxt: { fontSize: 12 },
-  donutWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 10,
-  },
+  donutWrap: { alignItems: "center", justifyContent: "center", marginVertical: 10 },
   donutLabel: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  legendRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 10,
-  },
+  legendRow: { flexDirection: "row", justifyContent: "space-around", marginTop: 10 },
   legendItem: { flexDirection: "row", alignItems: "center" },
   legendTxt: { fontSize: 12 },
   recHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   recHeaderTxt: { fontWeight: "600", flex: 1, fontSize: 16 },
-  recAdd: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  txnRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  recAdd: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  txnRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   txnLabel: { fontWeight: "500" },
   txnSub: { fontSize: 12, marginBottom: 4 },
   txnAmt: { fontWeight: "600" },
