@@ -38,9 +38,12 @@ export default function SettingsScreen() {
     const [currency, setCurrency] = useState<string>("EUR");
     const [currencyDropdownVisible, setCurrencyDropdownVisible] =
         useState(false);
-    const currencyOptions: any[] = [ /* ... */];
-
-    // whenever Permissions section opens, re-check actual OS permission status
+  const currencyOptions = [
+    "BGN","BRL","CAD","CHF","CNY","CZK","DKK","EUR","GBP",
+    "HKD","HRK","HUF","IDR","ILS","INR","ISK","JPY","KRW",
+    "MXN","MYR","NOK","NZD","PHP","PLN","RON","RUB","SEK",
+    "SGD","THB","TRY","USD","ZAR",
+  ];
     useEffect(() => {
         if (!permissionsOpen) return;
         (async () => {
