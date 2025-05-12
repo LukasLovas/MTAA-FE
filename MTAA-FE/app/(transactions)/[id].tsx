@@ -54,6 +54,7 @@ export default function TransactionFormScreen() {
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("EUR");
   const [date, setDate] = useState<Date | null>(null);
   const [datePickerVisible, setDatePickerVisible] =
     useState(false);
@@ -132,6 +133,14 @@ export default function TransactionFormScreen() {
     useState(false);
   const [budgetDropDownVisible, setBudgetDropDownVisible] =
     useState(false);
+  const [currencyDropDownVisible, setCurrencyDropDownVisible] =
+    useState(false);
+  const currencyOptions = [
+    "BGN","BRL","CAD","CHF","CNY","CZK","DKK","EUR","GBP",
+    "HKD","HRK","HUF","IDR","ILS","INR","ISK","JPY","KRW",
+    "MXN","MYR","NOK","NZD","PHP","PLN","RON","RUB","SEK",
+    "SGD","THB","TRY","USD","ZAR",
+  ];
 
   const [locPickerOpen, setLocPickerOpen] = useState(false);
   const [coords, setCoords] = useState<{lat:number;lng:number}|null>(null);
@@ -262,7 +271,7 @@ export default function TransactionFormScreen() {
       frequency,
       note,
       filename: generatedFilename,
-      currency_code: "EUR",
+      currency_code: currency,
     };
 
     try {
@@ -396,7 +405,7 @@ export default function TransactionFormScreen() {
             </TouchableOpacity>
 
             <TextInput
-              placeholder="€0"
+              placeholder="0"
               placeholderTextColor={theme.colors.border}
               keyboardType="numeric"
               style={[
@@ -412,6 +421,31 @@ export default function TransactionFormScreen() {
               onChangeText={setAmount}
             />
           </View>
+
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: theme.colors.card }]}
+            onPress={() =>
+              setCurrencyDropDownVisible(
+                !currencyDropDownVisible
+              )
+            }
+          >
+            <Text
+              style={{
+                color: currency
+                  ? theme.colors.text
+                  : theme.colors.border,
+              }}
+            >
+              {currency || "Currency"}
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={18}
+              color={theme.colors.text}
+              style={{ position: "absolute", right: 12, top: 16 }}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.input, { backgroundColor: theme.colors.card }]}
@@ -771,6 +805,28 @@ export default function TransactionFormScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        visible={currencyDropDownVisible}
+        onRequestClose={() => setCurrencyDropDownVisible(false)}
+      >
+        <ScrollView style={{ flex: 1, padding: 20, backgroundColor: theme.colors.background }}>
+          {currencyOptions.map((c) => (
+            <TouchableOpacity
+              key={c}
+              onPress={() => {
+                setCurrency(c);
+                setCurrencyDropDownVisible(false);
+              }}
+            >
+              <Text style={{ padding: 10, color: theme.colors.text }}>
+                {c}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </Modal>
     </>
   );
