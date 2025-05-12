@@ -49,7 +49,6 @@ export default function NewBudgetScreen() {
     setSaving(true);
 
     const payload = {
-      user_id: getUserIdFromToken(),
       label: title.trim(),
       amount: parseFloat(amount.replace(",", ".")),
       start_date: date.toISOString(),
