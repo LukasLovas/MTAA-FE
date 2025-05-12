@@ -96,9 +96,8 @@ export default function DashboardScreen() {
   }, [active, fetchSpending]);
 
   // Fetch and cache all transactions once
-  useEffect(() => {
-    (async () => {
-      const key = "cachedTx";
+  const fetchTransactions = async () => {
+    const key = "cachedTx";
       setLoadingTx(true);
       const net = await NetInfo.fetch();
       if (!net.isConnected) {
@@ -118,7 +117,10 @@ export default function DashboardScreen() {
       } finally {
         setLoadingTx(false);
       }
-    })();
+  }
+
+  useEffect(() => {
+    fetchTransactions();
   }, []);
 
   const spendingData = useMemo(() => {
@@ -275,6 +277,15 @@ export default function DashboardScreen() {
           <View style={styles.recHeader}>
             <Text style={[styles.recHeaderTxt, { color: theme.colors.text }]}>Recent transactions</Text>
             <TouchableOpacity
+              onPress={() => {
+                fetchTransactions();
+                setLoadingTx(true);
+              }}
+              style={[styles.recAdd, { backgroundColor: theme.colors.border, marginRight: 8 }]}
+            >
+              <Ionicons name="refresh" size={20} color={theme.colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push({ pathname: "/(transactions)/[id]", params: { id: "new" } })}
               style={[styles.recAdd, { backgroundColor: theme.colors.border }]}
             >
@@ -320,7 +331,7 @@ export default function DashboardScreen() {
                     <Text style={[styles.txnSub, { color: theme.colors.border }]}> {formatDate(item.creationDate)}</Text>
                   </View>
                   <Text style={[styles.txnAmt, { color: theme.colors.text }]}>
-                    {(item.amount > 0 ? "+" : "-") + Math.abs(item.amount)} {item.currency ?? "€"}
+                    {(item.transactionTypeEnum === "INCOME" ? "+" : "-") + Math.abs(item.amount)} {item.currency ?? "€"}
                   </Text>
                 </TouchableOpacity>
               )}
