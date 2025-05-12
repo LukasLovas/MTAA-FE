@@ -8,7 +8,7 @@ class WebSocketService {
   private manager: Manager | null = null;
   private transactionsListeners: ((transactions: transaction[]) => void)[] = [];
   private connected: boolean = false;
-  private serverUrl: string = 'http://192.168.0.102:8085'; // Make sure this is the correct IP address
+  private serverUrl: string = 'http://192.168.0.102:8085';
   private token: string | null = null;
 
   // Set token
@@ -71,7 +71,6 @@ class WebSocketService {
       });
 
       this.socket.on('connect_error', (error: any) => {
-        console.error('WebSocket connection error:', error);
       });
       
       this.socket.on('error', (error: any) => {

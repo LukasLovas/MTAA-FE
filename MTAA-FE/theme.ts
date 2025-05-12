@@ -1,4 +1,18 @@
-import { DefaultTheme as NavigationLightTheme, DarkTheme as NavigationDarkTheme, Theme } from '@react-navigation/native';
+// theme.ts - s upravenými typmi
+import { DefaultTheme as NavigationLightTheme, DarkTheme as NavigationDarkTheme, Theme as NavigationTheme } from '@react-navigation/native';
+
+// Rozšírenie typu Theme z @react-navigation/native o naše vlastnosti
+export interface Theme extends NavigationTheme {
+  dark: boolean;
+  highContrast?: boolean;
+  fontSize?: {
+    small: number;
+    medium: number;
+    large: number;
+    xlarge: number;
+    xxlarge: number;
+  }
+}
 
 export const LightTheme: Theme = {
   ...NavigationLightTheme,
@@ -12,6 +26,13 @@ export const LightTheme: Theme = {
     border: '#E0E0E0',
     notification: '#FF4D4D',
   },
+  fontSize: {
+    small: 12,
+    medium: 14,
+    large: 16,
+    xlarge: 18,
+    xxlarge: 20,
+  }
 };
 
 export const DarkTheme: Theme = {
@@ -26,4 +47,33 @@ export const DarkTheme: Theme = {
     border: '#333333',
     notification: '#FF4D4D',
   },
+  fontSize: {
+    small: 12,
+    medium: 14, 
+    large: 16,
+    xlarge: 18,
+    xxlarge: 20,
+  }
+};
+
+export const HighContrastTheme: Theme = {
+  ...NavigationLightTheme,
+  dark: false,
+  highContrast: true,
+  colors: {
+    ...NavigationLightTheme.colors,
+    background: '#000000',
+    card: '#000000',
+    text: '#FFFFFF',
+    primary: '#FFFF00',
+    border: '#FFFFFF',
+    notification: '#FF0000',
+  },
+  fontSize: {
+    small: 16,
+    medium: 18,
+    large: 20,
+    xlarge: 22,
+    xxlarge: 24,
+  }
 };
