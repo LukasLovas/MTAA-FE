@@ -257,10 +257,7 @@ export default function TransactionFormScreen() {
 
     }
 
-    const userId = await getUserIdFromToken();
-
     const payload = {
-      user_id: userId,
       label: title,
       amount: Number(amount),
       time: date?.toISOString(),

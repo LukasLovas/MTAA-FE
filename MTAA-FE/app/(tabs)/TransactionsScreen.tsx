@@ -189,7 +189,7 @@ export default function TransactionsScreen() {
             params: {
               id: item.id,
               label: item.label,
-              amount: item.transactionTypeEnum === "INCOME" ? item.amount : -item.amount,
+              amount: item.amount,
               creationDate: item.creationDate,
               transactionTypeEnum: item.transactionTypeEnum,
               category: item.category?.label || "Uncategorized",
