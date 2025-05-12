@@ -121,10 +121,10 @@ const fetchBudgets = async () => {
         >
           <View style={styles.row}>
             <View style={styles.labelBlock}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
+              <Text style={[styles.label, { color: theme.colors.text , fontSize: theme.fontSize?.large}]}>
                 {item.label}
               </Text>
-              <Text style={[styles.sub, { color: theme.colors.text }]}>
+              <Text style={[styles.sub, { color: theme.colors.text, fontSize: theme.fontSize?.medium }]}>
                 {formatAmount(item.amount, item.initialAmount)}
               </Text>
               <View
@@ -144,7 +144,7 @@ const fetchBudgets = async () => {
                 />
               </View>
             </View>
-            <Text style={[styles.percentage, { color: theme.colors.text }]}>
+            <Text style={[styles.percentage, { color: theme.colors.text, fontSize: theme.fontSize?.large }]}>
               {pct}%
             </Text>
           </View>
@@ -182,7 +182,7 @@ const fetchBudgets = async () => {
             <TextInput
               placeholder="Search"
               placeholderTextColor={theme.colors.text}
-              style={[styles.input, { color: theme.colors.text }]}
+              style={[styles.input, { color: theme.colors.text, fontSize: theme.fontSize?.medium }]}
               value={query}
               onChangeText={setQuery}
               returnKeyType="search"
@@ -202,7 +202,7 @@ const fetchBudgets = async () => {
         <View style={styles.pickers}>
           <View style={styles.pickerBlock}>
             <Text
-              style={[styles.pickerLabel, { color: theme.colors.text }]}
+              style={[styles.pickerLabel, { color: theme.colors.text, fontSize: theme.fontSize?.medium }]}
             >
               Start Date
             </Text>

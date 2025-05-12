@@ -23,7 +23,7 @@ export const LightTheme: Theme = {
     card: '#F0F0F0',
     text: '#000000',
     primary: '#2B2B2B',
-    border: '#E0E0E0',
+    border: '#d8d8d8',
     notification: '#FF4D4D',
   },
   fontSize: {

@@ -180,7 +180,7 @@ export default function DashboardScreen() {
           headerLeft: () => (
             <Text
               style={{
-                fontSize: 18,
+                fontSize: theme.fontSize?.xlarge,
                 color: theme.colors.text,
                 fontWeight: "bold",
                 marginLeft: 10,
@@ -214,7 +214,7 @@ export default function DashboardScreen() {
                 <Text
                   style={[
                     styles.segmentTxt,
-                    { color: theme.colors.text },
+                    { color: theme.colors.background, fontSize: theme.fontSize?.small },
                     active === p && { color: theme.colors.background, fontWeight: "600" },
                   ]}
                 >
@@ -251,9 +251,9 @@ export default function DashboardScreen() {
               </G>
             </Svg>
             <View style={styles.donutLabel}>
-              <Text style={{ textAlign: "center", fontWeight: "600", color: theme.colors.text }}>
+              <Text style={{ textAlign: "center", fontWeight: "600", color: theme.colors.text, fontSize: theme.fontSize?.large }}>
                 You spent{"\n"}
-                <Text style={{ fontSize: 18 }}>{spendingData.reduce((s, x) => s + x.amount, 0)}€</Text>
+                <Text style={{ fontSize: theme.fontSize?.large }}>{spendingData.reduce((s, x) => s + x.amount, 0)}€</Text>
               </Text>
             </View>
           </View>
@@ -275,7 +275,7 @@ export default function DashboardScreen() {
         {/* Recent Transactions */}
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <View style={styles.recHeader}>
-            <Text style={[styles.recHeaderTxt, { color: theme.colors.text }]}>Recent transactions</Text>
+            <Text style={[styles.recHeaderTxt, { color: theme.colors.text , fontSize: theme.fontSize?.large}]}>Recent transactions</Text>
             <TouchableOpacity
               onPress={() => {
                 fetchTransactions();
@@ -283,13 +283,13 @@ export default function DashboardScreen() {
               }}
               style={[styles.recAdd, { backgroundColor: theme.colors.border, marginRight: 8 }]}
             >
-              <Ionicons name="refresh" size={20} color={theme.colors.text} />
+              <Ionicons name="refresh" size={20} color={theme.colors.background} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push({ pathname: "/(transactions)/[id]", params: { id: "new" } })}
               style={[styles.recAdd, { backgroundColor: theme.colors.border }]}
             >
-              <Ionicons name="add" size={20} color={theme.colors.text} />
+              <Ionicons name="add" size={20} color={theme.colors.background} />
             </TouchableOpacity>
           </View>
 
@@ -325,12 +325,12 @@ export default function DashboardScreen() {
                   }
                 >
                   <View>
-                    <Text style={[styles.txnLabel, { color: theme.colors.text }]}>
+                    <Text style={[styles.txnLabel, { color: theme.colors.text , fontSize: theme.fontSize?.large}]}>
                       {item.label}
                     </Text>
-                    <Text style={[styles.txnSub, { color: theme.colors.border }]}> {formatDate(item.creationDate)}</Text>
+                    <Text style={[styles.txnSub, { color: theme.colors.border , fontSize: theme.fontSize?.small}]}> {formatDate(item.creationDate)}</Text>
                   </View>
-                  <Text style={[styles.txnAmt, { color: theme.colors.text }]}>
+                  <Text style={[styles.txnAmt, { color: theme.colors.text, fontSize: theme.fontSize?.large }]}>
                     {(item.transactionTypeEnum === "INCOME" ? "+" : "-") + Math.abs(item.amount)} {item.currency ?? "€"}
                   </Text>
                 </TouchableOpacity>
@@ -342,7 +342,7 @@ export default function DashboardScreen() {
             onPress={() => router.push("/(tabs)/TransactionsScreen")}
             style={{ alignSelf: "center", marginTop: 12 }}
           >
-            <Text style={{ textDecorationLine: "underline", color: theme.colors.primary }}>
+            <Text style={{ textDecorationLine: "underline", color: theme.colors.primary , fontSize: theme.fontSize?.medium }}>
               View all
             </Text>
           </TouchableOpacity>

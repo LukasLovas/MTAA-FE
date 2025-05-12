@@ -205,10 +205,10 @@ export default function TransactionsScreen() {
       >
         <View style={styles.row}>
           <View style={styles.labelBlock}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
+            <Text style={[styles.label, { color: theme.colors.text , fontSize: theme.fontSize?.xlarge}]}>
               {item.label}
             </Text>
-            <Text style={[styles.sub, { color: theme.colors.border }]}>
+            <Text style={[styles.sub, { color: theme.colors.border , fontSize: theme.fontSize?.small}]}>
               {formatDate(item.creationDate)}
             </Text>
           </View>
@@ -217,7 +217,8 @@ export default function TransactionsScreen() {
             { 
               color: item.transactionTypeEnum === "INCOME" 
                 ? "#2ed573"
-                : "#ff6b6b"
+                : "#ff6b6b",
+              fontSize: theme.fontSize?.xlarge
             }
           ]}>
             {formatAmount(item.transactionTypeEnum, item.amount, item.currency ?? "€")}
@@ -253,7 +254,7 @@ export default function TransactionsScreen() {
             <TextInput
               placeholder="Search"
               placeholderTextColor={theme.colors.border}
-              style={[styles.input, { color: theme.colors.text }]}
+              style={[styles.input, { color: theme.colors.text, fontSize: theme.fontSize?.large }]}
               value={query}
               onChangeText={setQuery}
               returnKeyType="search"
@@ -269,7 +270,7 @@ export default function TransactionsScreen() {
 
         <View style={styles.pickers}>
           <View style={styles.pickerBlock}>
-            <Text style={[styles.pickerLabel, { color: theme.colors.text }]}>Filtering</Text>
+            <Text style={[styles.pickerLabel, { color: theme.colors.text, fontSize: theme.fontSize?.medium }]}>Filtering</Text>
             <Picker
               mode="dropdown"
               selectedValue={filter}
@@ -283,7 +284,7 @@ export default function TransactionsScreen() {
             </Picker>
           </View>
           <View style={styles.pickerBlock}>
-            <Text style={[styles.pickerLabel, { color: theme.colors.text }]}>Sorting</Text>
+            <Text style={[styles.pickerLabel, { color: theme.colors.text , fontSize: theme.fontSize?.medium}]}>Sorting</Text>
             <Picker
               mode="dropdown"
               selectedValue={sortDir}
