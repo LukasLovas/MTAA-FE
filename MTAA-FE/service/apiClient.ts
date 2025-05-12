@@ -6,8 +6,11 @@ export const registerTokenGetter = (fn: () => string | null) => {
   getToken = fn;
 };
 
+export const baseURL = 'http://192.168.0.102';
+let apiURL = baseURL + ":8080";
+
 export const api = axios.create({
-  baseURL: 'http://192.168.0.102:8080',
+  baseURL: apiURL,
 });
 
 api.interceptors.request.use(

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { View, ActivityIndicator } from 'react-native';
 import { api, registerTokenGetter } from '../service/apiClient';
+import { websocketService } from '../service/websocketService';
 
 export interface AuthState {
   token: string | null;
@@ -18,6 +19,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     registerTokenGetter(() => token);
+
+    websocketService.setToken(token);
   }, [token]);
 
   useEffect(() => {
@@ -40,9 +43,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newToken = String(data.token);
     await SecureStore.setItemAsync('jwt', newToken);
     setToken(newToken);
+
+    websocketService.setToken(newToken);
+    websocketService.connect();
   };
 
   const signOut = async () => {
+    websocketService.disconnect();
+    websocketService.setToken(null);
+
     await SecureStore.deleteItemAsync('jwt');
     setToken(null);
   };
