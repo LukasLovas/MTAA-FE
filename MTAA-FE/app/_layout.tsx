@@ -1,6 +1,12 @@
 import { Stack } from 'expo-router';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import 'react-native-get-random-values';
+
+import { registerRootComponent } from 'expo';
+
+registerRootComponent(RootLayout);
+
 function RootNavigator() {
   const { token } = useAuth();
 

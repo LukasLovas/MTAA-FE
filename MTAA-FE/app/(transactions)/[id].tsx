@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Modal
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -17,6 +18,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import * as Crypto from "expo-crypto";
+import * as Location from 'expo-location';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 import { api, getUserIdFromToken } from "@/service/apiClient";
 import { ThemeContext } from "@/contexts/ThemeContext";
@@ -25,8 +28,6 @@ type Mode = "create" | "edit";
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDate = (d: Date) =>
   `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-
-const grey = "#D9D9D9";
 
 export default function TransactionFormScreen() {
   const { theme } = useContext(ThemeContext);
@@ -68,8 +69,6 @@ export default function TransactionFormScreen() {
     attachment,
     setAttachment,
   ] = useState<ImagePicker.ImagePickerAsset | null>(null);
-
-  const [filename, setFilename] = useState<string>("");
 
   const [saving, setSaving] = useState(false);
 
@@ -134,6 +133,9 @@ export default function TransactionFormScreen() {
   const [budgetDropDownVisible, setBudgetDropDownVisible] =
     useState(false);
 
+  const [locPickerOpen, setLocPickerOpen] = useState(false);
+  const [coords, setCoords] = useState<{lat:number;lng:number}|null>(null);
+
   const pickAttachment = async () => {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -156,6 +158,18 @@ export default function TransactionFormScreen() {
     if (!isValid)
       return Alert.alert("Please fill Title and Amount.");
     setSaving(true);
+
+    let locationId = null;
+
+    if (coords) {
+      const { lat, lng } = coords;
+      const { data } = await api.post("/location", {
+        name: location,
+        latitude: lat,
+        longitude: lng,
+      });
+      locationId = data.id;
+    }
 
     let generatedFilename = "";
 
@@ -221,7 +235,7 @@ export default function TransactionFormScreen() {
       transaction_type: type,
       category,
       budget,
-      location,
+      location_id: locationId,
       frequency,
       note,
       filename: generatedFilename,
@@ -376,19 +390,16 @@ export default function TransactionFormScreen() {
             />
           </View>
 
-          <TextInput
-            placeholder="Choose location"
-            placeholderTextColor={theme.colors.border}
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.colors.card,
-                color: theme.colors.text,
-              },
-            ]}
-            value={location}
-            onChangeText={setLocation}
-          />
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: theme.colors.card }]}
+            onPress={() => setLocPickerOpen(true)}
+          >
+            <Text style={{ color: location ? theme.colors.text : theme.colors.border }}>
+              {location || "Choose location"}
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.text}
+                      style={{ position: "absolute", right: 12, top: 16 }} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[
@@ -618,6 +629,79 @@ export default function TransactionFormScreen() {
         }}
         onCancel={() => setDatePickerVisible(false)}
       />
+
+      <Modal
+        animationType="slide"
+        visible={locPickerOpen}
+        onRequestClose={() => setLocPickerOpen(false)}
+      >
+        <View 
+          style={{ flex: 1, paddingTop: 60, backgroundColor: theme.colors.background }}
+        >
+          <TouchableOpacity
+            style={{ padding: 14, alignSelf: "flex-end", marginRight: 10 }}
+            onPress={async () => {
+              try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== "granted") {
+                  Alert.alert("Permission denied", "Location permission is required.");
+                  return;
+                }
+                const pos = await Location.getCurrentPositionAsync({});
+                const [place] = await Location.reverseGeocodeAsync(pos.coords);
+                const label =
+                  `${place.name ?? ""} ${place.street ?? ""}`.trim() ||
+                  `${place.postalCode ?? ""} ${place.city ?? ""}`.trim();
+                setLocation(label);
+                setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setLocPickerOpen(false); 
+              } catch (err) {
+                Alert.alert("Could not fetch location");
+              }
+            }}
+          >
+            <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>Use my location</Text>
+          </TouchableOpacity>
+
+          <GooglePlacesAutocomplete
+            keyboardShouldPersistTaps="handled"
+            placeholder="Search places"
+            minLength={2}
+            timeout={15000}
+            query={{ key: 'AIzaSyCORMAw3XAay-4Rl6ZglaCwwEzc0V1XR7U', language: "en" }} // Todo: hide this key
+            onPress={({ description }, details) => { 
+              setLocation(description); 
+              if (details?.geometry?.location) {
+                setCoords(details.geometry.location);
+              } else {
+                setCoords(null);
+              }
+              setLocPickerOpen(false); 
+            }}
+            onFail={err => {
+              console.log('[Places] error', err);    
+              Alert.alert('Places error', JSON.stringify(err, null, 2));
+            }}
+            onNotFound={() => {
+              console.log('[Places] zero results');
+            }}
+
+            predefinedPlaces={[]}
+            textInputProps={{}}
+            fetchDetails={true}
+            styles={{
+              textInput: {
+                height: 48,
+                borderRadius: 8,
+                paddingHorizontal: 14,
+                backgroundColor: theme.colors.card,
+                color: theme.colors.text,
+              },
+              listView: { backgroundColor: theme.colors.card },
+            }}
+          />
+        </View>
+      </Modal>
     </>
   );
 }
