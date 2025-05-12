@@ -19,7 +19,7 @@ function RootNavigator() {
         />
       ) : (
         <Stack.Screen
-          name="login"
+          name="Log in"
           options={{ headerShown: false }}
         />
       )}

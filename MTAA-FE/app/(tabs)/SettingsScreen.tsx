@@ -1,5 +1,4 @@
-// app/(tabs)/SettingsScreen.tsx
-
+// app/(tabs)/SettingsScreen.tsx - aktualizovaný s upravenými importmi
 import React, { useState, useContext, useEffect } from "react";
 import {
     View,
@@ -14,14 +13,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Stack } from "expo-router";
 import AppHeader from "../header/AppHeader";
-import { ThemeContext } from "../../contexts/ThemeContext";
+import { ThemeContext, ThemeMode } from "../../contexts/ThemeContext";
+import { Theme } from "../../theme";
 
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Location from "expo-location";
 
 export default function SettingsScreen() {
-    const { theme, toggleTheme } = useContext(ThemeContext);
+    const { theme, themeMode, setThemeMode } = useContext(ThemeContext);
     const [appearanceOpen, setAppearanceOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [permissionsOpen, setPermissionsOpen] = useState(false);
@@ -121,11 +121,11 @@ export default function SettingsScreen() {
     ) => (
         <View style={styles.section}>
             <TouchableOpacity style={styles.header} onPress={onToggle}>
-                <Text style={styles.headerText}>{title}</Text>
+                <Text style={[styles.headerText, { fontSize: theme.fontSize?.large || 16 }]}>{title}</Text>
                 <Ionicons
                     name={isOpen ? "chevron-up" : "chevron-down"}
                     size={20}
-                    color="#000"
+                    color={theme.highContrast ? theme.colors.text : "#000"}
                 />
             </TouchableOpacity>
             {isOpen && (
@@ -144,7 +144,7 @@ export default function SettingsScreen() {
                     headerRight: () => <AppHeader />,
                     headerTitleAlign: "center",
                     headerStyle: { backgroundColor: theme.colors.card },
-                    headerTitleStyle: { color: theme.colors.text },
+                    headerTitleStyle: { color: theme.colors.text, fontSize: theme.fontSize?.large || 16 },
                 }}
             />
             <ScrollView
@@ -157,17 +157,51 @@ export default function SettingsScreen() {
                     "Appearance",
                     appearanceOpen,
                     () => setAppearanceOpen(!appearanceOpen),
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: theme.colors.text }]}>
-                            Dark mode
-                        </Text>
-                        <Switch
-                            value={theme.dark}
-                            onValueChange={toggleTheme}
-                            thumbColor={theme.colors.primary}
-                            trackColor={{ false: "#d0d0d0", true: "#d0d0d0" }}
-                        />
-                    </View>
+                    <>
+                        <View style={styles.row}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
+                                Dark mode
+                            </Text>
+                            <Switch
+                                value={themeMode === 'dark'}
+                                onValueChange={(val) => {
+                                    // Ak je zapnutý high contrast, necháme ho zapnutý
+                                    if (themeMode === 'highContrast') return;
+                                    
+                                    setThemeMode(val ? 'dark' : 'light');
+                                }}
+                                thumbColor={theme.colors.primary}
+                                trackColor={{ false: "#d0d0d0", true: "#d0d0d0" }}
+                                disabled={themeMode === 'highContrast'}
+                            />
+                        </View>
+                        
+                        <View style={styles.row}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
+                                High contrast mode (Accessibility)
+                            </Text>
+                            <Switch
+                                value={themeMode === 'highContrast'}
+                                onValueChange={(val) => {
+                                    setThemeMode(val ? 'highContrast' : 'light');
+                                }}
+                                thumbColor={theme.colors.primary}
+                                trackColor={{ false: "#d0d0d0", true: "#d0d0d0" }}
+                            />
+                        </View>
+                    </>
                 )}
 
                 {renderSection(
@@ -176,7 +210,13 @@ export default function SettingsScreen() {
                     () => setNotificationsOpen(!notificationsOpen),
                     <>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Upcoming transactions
                             </Text>
                             <Switch
@@ -187,7 +227,13 @@ export default function SettingsScreen() {
                             />
                         </View>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Subscription reminder
                             </Text>
                             <Switch
@@ -198,7 +244,13 @@ export default function SettingsScreen() {
                             />
                         </View>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Budget reset notifications
                             </Text>
                             <Switch
@@ -217,7 +269,13 @@ export default function SettingsScreen() {
                     () => setPermissionsOpen(!permissionsOpen),
                     <>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Camera
                             </Text>
                             <Switch
@@ -228,7 +286,13 @@ export default function SettingsScreen() {
                             />
                         </View>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Storage
                             </Text>
                             <Switch
@@ -239,7 +303,13 @@ export default function SettingsScreen() {
                             />
                         </View>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Location
                             </Text>
                             <Switch
@@ -258,7 +328,13 @@ export default function SettingsScreen() {
                     () => setCurrencyOpen(!currencyOpen),
                     <View>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: theme.colors.text }]}>
+                            <Text style={[
+                                styles.label, 
+                                { 
+                                    color: theme.colors.text,
+                                    fontSize: theme.fontSize?.medium || 14 
+                                }
+                            ]}>
                                 Currency
                             </Text>
                             <TouchableOpacity
@@ -267,7 +343,13 @@ export default function SettingsScreen() {
                                     setCurrencyDropdownVisible(!currencyDropdownVisible)
                                 }
                             >
-                                <Text style={[styles.label, { color: theme.colors.text }]}>
+                                <Text style={[
+                                    styles.label, 
+                                    { 
+                                        color: theme.colors.text,
+                                        fontSize: theme.fontSize?.medium || 14 
+                                    }
+                                ]}>
                                     {currency}
                                 </Text>
                                 <Ionicons
@@ -280,7 +362,10 @@ export default function SettingsScreen() {
                             </TouchableOpacity>
                         </View>
                         {currencyDropdownVisible && (
-                            <View style={styles.optionList}>
+                            <View style={[
+                                styles.optionList,
+                                { backgroundColor: theme.colors.card }
+                            ]}>
                                 {currencyOptions.map((opt) => (
                                     <TouchableOpacity
                                         key={opt}
@@ -290,7 +375,15 @@ export default function SettingsScreen() {
                                             setCurrencyDropdownVisible(false);
                                         }}
                                     >
-                                        <Text style={styles.optionText}>{opt}</Text>
+                                        <Text style={[
+                                            styles.optionText, 
+                                            { 
+                                                color: theme.colors.text,
+                                                fontSize: theme.fontSize?.medium || 14 
+                                            }
+                                        ]}>
+                                            {opt}
+                                        </Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
