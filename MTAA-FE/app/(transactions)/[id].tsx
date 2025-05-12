@@ -154,6 +154,29 @@ export default function TransactionFormScreen() {
 
   };
 
+  const [categoryModalVisible, setCategoryModalVisible] =
+    useState(false);
+  const [categoryName, setCategoryName] = useState("");
+
+  const addCategory = async () => {
+    if (!categoryName.trim()) {
+      Alert.alert("Please enter a category name");
+      return;
+    }
+
+    try {
+      const { data } = await api.post("/category", {
+        user_id: await getUserIdFromToken(),
+        label: categoryName,
+      });
+      setCategories((prev) => [...prev, data.label]);
+      setCategory(data.label);
+      setCategoryModalVisible(false);
+    } catch (error) {
+      console.error("Error adding category:", error);
+    }
+  }
+
   const onSave = async () => {
     if (!isValid)
       return Alert.alert("Please fill Title and Amount.");
@@ -449,6 +472,23 @@ export default function TransactionFormScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                onPress={() => {
+                  setCategoryDropDownVisible(false);
+                  setCategoryModalVisible(true);
+                }}
+                style={{
+                  padding: 10,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <Text
+                  style={{ color: theme.colors.text, fontWeight: "500" }}
+                >
+                  + Add new category
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -700,6 +740,36 @@ export default function TransactionFormScreen() {
               listView: { backgroundColor: theme.colors.card },
             }}
           />
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        visible={categoryModalVisible}
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.background }}>
+          <TextInput
+            placeholder="Category name"
+            placeholderTextColor={theme.colors.border}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                color: theme.colors.text,
+              },
+            ]}
+            value={categoryName}
+            onChangeText={setCategoryName}
+          />
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: theme.colors.primary }]}
+            onPress={addCategory}
+          >
+            <Text style={[styles.saveTxt, { color: theme.colors.background }]}>
+              Save
+            </Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </>
